@@ -20,5 +20,5 @@ func (h *Handler) GetSingleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.SendData(w, user, http.StatusOK)
+	response.SendDataWithMessage(w, "User retrieved successfully", user, http.StatusOK)
 }

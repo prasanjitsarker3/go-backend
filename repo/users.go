@@ -8,6 +8,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// ErrUserNotFound is returned when no user matches the given id.
+var ErrUserNotFound = errors.New("user not found")
+
 type User struct {
 	ID    int    `json:"id" db:"id"`
 	Name  string `json:"name" db:"name"`
@@ -70,7 +73,7 @@ func (r *userRepo) Get(id int) (*User, error) {
 	var u User
 	err := r.dbCon.Get(&u, `SELECT id, name, email FROM users WHERE id = $1`, id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("user %d not found", id)
+		return nil, fmt.Errorf("%w: id %d", ErrUserNotFound, id)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get user %d: %w", id, err)
@@ -91,7 +94,7 @@ func (r *userRepo) Update(u User) (*User, error) {
 	var updated User
 	err := r.dbCon.Get(&updated, query, u.Name, u.Email, u.ID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("user %d not found", u.ID)
+		return nil, fmt.Errorf("%w: id %d", ErrUserNotFound, u.ID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("update user %d: %w", u.ID, err)
@@ -109,7 +112,7 @@ func (r *userRepo) Delete(id int) (bool, error) {
 		return false, err
 	}
 	if n == 0 {
-		return false, fmt.Errorf("user %d not found", id)
+		return false, fmt.Errorf("%w: id %d", ErrUserNotFound, id)
 	}
 	return true, nil
 }

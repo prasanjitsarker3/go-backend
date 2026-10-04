@@ -22,5 +22,5 @@ func (h *Handler) CreateNewUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.SendData(w, created, http.StatusCreated)
+	response.SendDataWithMessage(w, "User created successfully", created, http.StatusCreated)
 }
