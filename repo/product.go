@@ -80,6 +80,9 @@ func (r *productRepo) nextID() int {
 	return maxID + 1
 }
 
+
+
+
 func generateProducts(r *productRepo) {
 	prd1 := Product{
 		ID:          1,

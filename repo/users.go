@@ -1,11 +1,17 @@
 package repo
 
-import "fmt"
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/jmoiron/sqlx"
+)
 
 type User struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	ID    int    `json:"id" db:"id"`
+	Name  string `json:"name" db:"name"`
+	Email string `json:"email" db:"email"`
 }
 
 type UserRepo interface {
@@ -17,63 +23,93 @@ type UserRepo interface {
 }
 
 type userRepo struct {
-	userList []*User
+	dbCon *sqlx.DB
 }
 
-//Constructor or constructor functions
-func NewUserRepo() UserRepo {
-	return &userRepo{userList: []*User{}}
+
+func NewUserRepo(dbCon *sqlx.DB) UserRepo {
+	return &userRepo{dbCon: dbCon}
 }
 
 func (r *userRepo) Create(u User) (*User, error) {
-	u.ID = r.nextID()
-	r.userList = append(r.userList, &u)
-	return &u, nil
+
+    var exists bool
+
+    err := r.dbCon.Get(
+        &exists,
+        `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`,
+        u.Email,
+    )
+
+    if err != nil {
+        return nil, fmt.Errorf("check email: %w", err)
+    }
+
+    if exists {
+        return nil, fmt.Errorf("email already exists")
+    }
+
+    query := `
+        INSERT INTO users (name, email)
+        VALUES ($1, $2)
+        RETURNING id, name, email
+    `
+
+    var created User
+
+    err = r.dbCon.Get(&created, query, u.Name, u.Email)
+
+    if err != nil {
+        return nil, fmt.Errorf("create user: %w", err)
+    }
+
+    return &created, nil
 }
 
 func (r *userRepo) Get(id int) (*User, error) {
-	for i := range r.userList {
-		if r.userList[i].ID == id {
-			return r.userList[i], nil
-		}
+	var u User
+	err := r.dbCon.Get(&u, `SELECT id, name, email FROM users WHERE id = $1`, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("user %d not found", id)
 	}
-
-	return nil, fmt.Errorf("user %d not found", id)
+	if err != nil {
+		return nil, fmt.Errorf("get user %d: %w", id, err)
+	}
+	return &u, nil
 }
 
 func (r *userRepo) List() []*User {
-	return r.userList
+	users := []*User{}
+	if err := r.dbCon.Select(&users, `SELECT id, name, email FROM users ORDER BY id`); err != nil {
+		return []*User{}
+	}
+	return users
 }
 
 func (r *userRepo) Update(u User) (*User, error) {
-	for i := range r.userList {
-		if r.userList[i].ID == u.ID {
-			r.userList[i] = &u
-			return r.userList[i], nil
-		}
+	query := `UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email`
+	var updated User
+	err := r.dbCon.Get(&updated, query, u.Name, u.Email, u.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("user %d not found", u.ID)
 	}
-
-	return nil, fmt.Errorf("user %d not found", u.ID)
+	if err != nil {
+		return nil, fmt.Errorf("update user %d: %w", u.ID, err)
+	}
+	return &updated, nil
 }
 
 func (r *userRepo) Delete(id int) (bool, error) {
-	for i := range r.userList {
-		if r.userList[i].ID == id {
-			r.userList = append(r.userList[:i], r.userList[i+1:]...)
-			return true, nil
-		}
+	res, err := r.dbCon.Exec(`DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		return false, fmt.Errorf("delete user %d: %w", id, err)
 	}
-
-	return false, fmt.Errorf("user %d not found", id)
-}
-
-func (r *userRepo) nextID() int {
-	maxID := 0
-	for _, u := range r.userList {
-		if u.ID > maxID {
-			maxID = u.ID
-		}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
 	}
-
-	return maxID + 1
+	if n == 0 {
+		return false, fmt.Errorf("user %d not found", id)
+	}
+	return true, nil
 }
