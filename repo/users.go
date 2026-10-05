@@ -6,74 +6,59 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+
+	"backend-golang/domain"
+	"backend-golang/users"
 )
-
-// ErrUserNotFound is returned when no user matches the given id.
-var ErrUserNotFound = errors.New("user not found")
-
-type User struct {
-	ID    int    `json:"id" db:"id"`
-	Name  string `json:"name" db:"name"`
-	Email string `json:"email" db:"email"`
-}
-
-type UserRepo interface {
-	Create(u User) (*User, error)
-	Get(id int) (*User, error)
-	List() []*User
-	Update(u User) (*User, error)
-	Delete(id int) (bool, error)
-}
 
 type userRepo struct {
 	dbCon *sqlx.DB
 }
 
-
-func NewUserRepo(dbCon *sqlx.DB) UserRepo {
+func NewUserRepo(dbCon *sqlx.DB) users.UserRepo {
 	return &userRepo{dbCon: dbCon}
 }
 
-func (r *userRepo) Create(u User) (*User, error) {
+func (r *userRepo) Create(u domain.User) (*domain.User, error) {
 
-    var exists bool
+	var exists bool
 
-    err := r.dbCon.Get(
-        &exists,
-        `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`,
-        u.Email,
-    )
+	err := r.dbCon.Get(
+		&exists,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`,
+		u.Email,
+	)
 
-    if err != nil {
-        return nil, fmt.Errorf("check email: %w", err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("check email: %w", err)
+	}
 
-    if exists {
-        return nil, fmt.Errorf("email already exists")
-    }
+	if exists {
+		return nil, fmt.Errorf("email already exists")
+	}
 
-    query := `
+	query := `
         INSERT INTO users (name, email)
         VALUES ($1, $2)
         RETURNING id, name, email
     `
 
-    var created User
+	var created domain.User
 
-    err = r.dbCon.Get(&created, query, u.Name, u.Email)
+	err = r.dbCon.Get(&created, query, u.Name, u.Email)
 
-    if err != nil {
-        return nil, fmt.Errorf("create user: %w", err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("create user: %w", err)
+	}
 
-    return &created, nil
+	return &created, nil
 }
 
-func (r *userRepo) Get(id int) (*User, error) {
-	var u User
+func (r *userRepo) Get(id int) (*domain.User, error) {
+	var u domain.User
 	err := r.dbCon.Get(&u, `SELECT id, name, email FROM users WHERE id = $1`, id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("%w: id %d", ErrUserNotFound, id)
+		return nil, fmt.Errorf("%w: id %d", domain.ErrUserNotFound, id)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get user %d: %w", id, err)
@@ -81,20 +66,20 @@ func (r *userRepo) Get(id int) (*User, error) {
 	return &u, nil
 }
 
-func (r *userRepo) List() []*User {
-	users := []*User{}
+func (r *userRepo) List() []*domain.User {
+	users := []*domain.User{}
 	if err := r.dbCon.Select(&users, `SELECT id, name, email FROM users ORDER BY id`); err != nil {
-		return []*User{}
+		return []*domain.User{}
 	}
 	return users
 }
 
-func (r *userRepo) Update(u User) (*User, error) {
+func (r *userRepo) Update(u domain.User) (*domain.User, error) {
 	query := `UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email`
-	var updated User
+	var updated domain.User
 	err := r.dbCon.Get(&updated, query, u.Name, u.Email, u.ID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("%w: id %d", ErrUserNotFound, u.ID)
+		return nil, fmt.Errorf("%w: id %d", domain.ErrUserNotFound, u.ID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("update user %d: %w", u.ID, err)
@@ -112,7 +97,7 @@ func (r *userRepo) Delete(id int) (bool, error) {
 		return false, err
 	}
 	if n == 0 {
-		return false, fmt.Errorf("%w: id %d", ErrUserNotFound, id)
+		return false, fmt.Errorf("%w: id %d", domain.ErrUserNotFound, id)
 	}
 	return true, nil
 }

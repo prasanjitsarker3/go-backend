@@ -1,11 +1,9 @@
 package users
 
-import "backend-golang/repo"
-
 type Handler struct {
-	repo repo.UserRepo
+	service Services
 }
 
-func NewHandler(repo repo.UserRepo) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(service Services) *Handler {
+	return &Handler{service: service}
 }

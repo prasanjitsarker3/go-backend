@@ -14,7 +14,7 @@ func (h *Handler) GetSingleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.repo.Get(id)
+	user, err := h.service.Get(id)
 	if err != nil {
 		util.SendError(w, http.StatusNotFound, "User Not Found !")
 		return

@@ -6,5 +6,5 @@ import (
 )
 
 func (h *Handler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
-	response.SendDataWithMessage(w, "Users retrieved successfully", h.repo.List(), http.StatusOK)
+	response.SendDataWithMessage(w, "Users retrieved successfully", h.service.List(), http.StatusOK)
 }

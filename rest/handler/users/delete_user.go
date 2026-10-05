@@ -1,7 +1,7 @@
 package users
 
 import (
-	"backend-golang/repo"
+	"backend-golang/domain"
 	"backend-golang/response"
 	"backend-golang/util"
 	"errors"
@@ -16,8 +16,9 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.repo.Delete(id)
-	if errors.Is(err, repo.ErrUserNotFound) {
+	_, err = h.service.Delete(id)
+	if errors.Is(err, domain.ErrUserNotFound) {
+		
 		util.SendError(w, http.StatusNotFound, "User Not Found !")
 		return
 	}

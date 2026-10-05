@@ -1,7 +1,7 @@
 package users
 
 import (
-	"backend-golang/repo"
+	"backend-golang/domain"
 	"backend-golang/response"
 	"backend-golang/util"
 	"encoding/json"
@@ -9,14 +9,14 @@ import (
 )
 
 func (h *Handler) CreateNewUser(w http.ResponseWriter, r *http.Request) {
-	var user repo.User
+	var user domain.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		util.SendError(w, http.StatusBadRequest, "Invalid requested body")
 		return
 	}
 
-	created, err := h.repo.Create(user)
+	created, err := h.service.Create(user)
 	if err != nil {
 		util.SendError(w, http.StatusInternalServerError, err.Error())
 		return

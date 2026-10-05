@@ -1,7 +1,7 @@
 package users
 
 import (
-	"backend-golang/repo"
+	"backend-golang/domain"
 	"backend-golang/response"
 	"backend-golang/util"
 	"encoding/json"
@@ -17,15 +17,15 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user repo.User
+	var user domain.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		util.SendError(w, http.StatusBadRequest, "Invalid requested body")
 		return
 	}
 	user.ID = id
 
-	updated, err := h.repo.Update(user)
-	if errors.Is(err, repo.ErrUserNotFound) {
+	updated, err := h.service.Update(user)
+	if errors.Is(err, domain.ErrUserNotFound) {
 		util.SendError(w, http.StatusNotFound, "User Not Found !")
 		return
 	}

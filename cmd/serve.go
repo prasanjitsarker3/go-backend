@@ -6,7 +6,8 @@ import (
 	"backend-golang/repo"
 	"backend-golang/rest"
 	"backend-golang/rest/handler/product"
-	"backend-golang/rest/handler/users"
+	userHandlers "backend-golang/rest/handler/users"
+	userservice "backend-golang/users"
 	"context"
 	"fmt"
 	"os"
@@ -22,11 +23,14 @@ func Serve() {
 		os.Exit(1)
 	}
 	defer dbConn.Close()
+	
+	// Domains 
+	userService := userservice.NewService(repo.NewUserRepo(dbConn))
 
-	fmt.Println("PostgreSQL connected successfully!")
-
+    // Initialize repositories and handlers
 	productHandler := product.NewHandler(repo.NewProductRepo())
-	userHandler := users.NewHandler(repo.NewUserRepo(dbConn))
+	userHandler := userHandlers.NewHandler(userService)
+    
 
 	server := rest.NewServer(productHandler, userHandler)
 	server.StartServer(cnf)
